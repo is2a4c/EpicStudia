@@ -69,6 +69,14 @@ function Header() {
                     >
                         Профиль
                     </Typography>
+                    <Typography
+                        variant="h6"
+                        component={Link}
+                        to="/live"
+                        sx={{ color: 'white', textDecoration: 'none' }}
+                    >
+                        Трансляции
+                    </Typography>
                 </Box>
                 <Box sx={{ position: 'relative', width: '40%' }}>
                     <TextField
