@@ -14,8 +14,8 @@ jobs:
     steps:
     - uses: actions/first-interaction@v3
       with:
-        repo-token: ${{ secrets.GITHUB_TOKEN }}
-        pr-message: |
+        repo_token: ${{ secrets.GITHUB_TOKEN }}
+        pr_message: |
           👋 Привет! Спасибо за ваш первый Pull Request в EpicStudia!
           
           📋 Что происходит дальше:
@@ -30,3 +30,5 @@ jobs:
           - [ ] Вы следуете [CONTRIBUTING.md](../blob/main/CONTRIBUTING.md)
           
           Если у вас есть вопросы — задавайте в комментариях! 🚀
+        issue_message: |
+          👋 Привет! Спасибо за ваш первый Issue в EpicStudia!
