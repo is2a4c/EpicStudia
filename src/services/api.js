@@ -103,3 +103,13 @@ export const setMovieRating = async (movieId, rating, token) => {
     });
     return response.data;
 };
+
+export const getLivestreams = async () => {
+    const response = await api.get('/live');
+    return response.data;
+};
+
+export const getLivestreamById = async (id) => {
+    const response = await api.get(`/live/${id}`);
+    return response.data;
+};

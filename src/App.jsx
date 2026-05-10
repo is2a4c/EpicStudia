@@ -7,6 +7,8 @@ import {Box, CssBaseline, ThemeProvider} from "@mui/material";
 import darkTheme from "./theme/theme.jsx";
 import CreateMoviePage from "./pages/CreatMoviePage.jsx";
 import SearchPage from './pages/SearchPage.jsx';
+import LivePage from './pages/LivePage.jsx';
+import LiveStreamPage from './pages/LiveStreamPage.jsx';
 
 function App() {
     return (
@@ -21,6 +23,8 @@ function App() {
                         <Route path="/user" element={<UserPage />} />
                         <Route path="/user/upload" element={<CreateMoviePage />} />
                         <Route path="/movie/search/:hashtag" element={<SearchPage />} />
+                        <Route path="/live" element={<LivePage />} />
+                        <Route path="/live/:id" element={<LiveStreamPage />} />
                     </Routes>
                 </Box>
             </Router>
