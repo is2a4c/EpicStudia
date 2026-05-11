@@ -1,11 +1,57 @@
 import axios from 'axios';
 
-export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5002/api/v1';
+export const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api/v1';
 
 const api = axios.create({
     baseURL: API_URL,
     withCredentials: true,
 });
+
+export class ApiError extends Error {
+    constructor(message, status) {
+        super(message);
+        this.name = 'ApiError';
+        this.status = status;
+    }
+}
+
+const getErrorMessage = (error) => {
+    const responseData = error?.response?.data;
+    if (typeof responseData === 'string' && responseData.trim()) {
+        return responseData;
+    }
+
+    if (responseData?.message) {
+        return responseData.message;
+    }
+
+    return error?.message || 'Что-то пошло не так';
+};
+
+api.interceptors.request.use((config) => {
+    const token = localStorage.getItem('token');
+    if (token && !config.headers?.Authorization) {
+        config.headers.Authorization = `Bearer ${token}`;
+    }
+    return config;
+});
+
+api.interceptors.response.use(
+    (response) => response,
+    (error) => {
+        const status = error?.response?.status;
+        const message = getErrorMessage(error);
+
+        if (status === 401) {
+            localStorage.removeItem('token');
+            if (window.location.pathname !== '/user') {
+                window.location.assign('/user');
+            }
+        }
+
+        return Promise.reject(new ApiError(message, status));
+    }
+);
 
 export const getMovies = async () => {
     const response = await api.get('/movies');
@@ -53,9 +99,9 @@ export const LoginOrRegisterUser = async (endpoint, username, password) => {
 };
 
 export const getUserProfile = async (token) => {
-    const response = await api.get('/user/profile', {
+    const response = await api.get('/user/profile', token ? {
         headers: { 'Authorization': `Bearer ${token}` }
-    });
+    } : undefined);
     return response.data;
 };
 
@@ -120,7 +166,7 @@ export const getLivestreamById = async (id, token) => {
 
 export const createLivestream = async ({ title, description, streamer }, token) => {
     const response = await api.post('/live', { title, description, streamer }, {
-        headers: { 'Authorization': `Bearer ${token}` },
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
     });
     return response.data;
 };
