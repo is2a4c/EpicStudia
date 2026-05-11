@@ -14,6 +14,8 @@ import {
 } from "../services/api.js";
 import CreateMoviePage from "./CreatMoviePage.jsx";
 
+const STREAM_MANAGEMENT_ROLES = ['streamer', 'admin', 'owner'];
+
 function UserPage() {
     const [user, setUser] = useState(null);
     const [users, setUsers] = useState([]);
@@ -30,6 +32,7 @@ function UserPage() {
     const [obsConfig, setObsConfig] = useState(null);
 
     const token = localStorage.getItem('token');
+    const hasStudioAccess = STREAM_MANAGEMENT_ROLES.includes(user?.role);
 
     const isMobile = useMediaQuery('(max-width:600px)');
 
@@ -48,12 +51,16 @@ function UserPage() {
                     setUsers(usersResponse);
                 }
 
-                if (response.role === 'admin' || response.role === 'streamer') {
+                if (STREAM_MANAGEMENT_ROLES.includes(response.role)) {
                     const livestreams = await getLivestreams();
                     setStreams(Array.isArray(livestreams) ? livestreams : []);
                 }
-            } catch {
-                setError('Не удалось загрузить профиль. Пожалуйста, войдите.');
+            } catch (err) {
+                if (err.status === 403) {
+                    setError('Недостаточно прав');
+                } else {
+                    setError(err.message || 'Не удалось загрузить профиль. Пожалуйста, войдите.');
+                }
                 localStorage.removeItem('token');
             } finally {
                 setLoading(false);
@@ -74,8 +81,8 @@ function UserPage() {
             const response = await LoginOrRegisterUser(endpoint, form.username, form.password);
             localStorage.setItem('token', response.token);
             window.location.reload();
-        } catch {
-            setError('Ошибка входа');
+        } catch (err) {
+            setError(err.message || 'Ошибка входа');
         }
     };
 
@@ -132,7 +139,7 @@ function UserPage() {
     };
 
     const refreshStreams = async () => {
-        const livestreams = await getLivestreams();
+        const livestreams = await getLivestreams(token);
         setStreams(Array.isArray(livestreams) ? livestreams : []);
     };
 
@@ -157,8 +164,12 @@ function UserPage() {
             await refreshStreams();
             setStreamForm({ title: '', description: '' });
             setStreamSuccess('Трансляция создана. Запустите её, чтобы получить данные для OBS.');
-        } catch {
-            setStreamError('Не удалось создать трансляцию');
+        } catch (err) {
+            if (err.status === 403) {
+                setStreamError('Недостаточно прав');
+            } else {
+                setStreamError(err.message || 'Не удалось создать трансляцию');
+            }
         } finally {
             setStreamLoading(false);
         }
@@ -197,10 +208,24 @@ function UserPage() {
             } else {
                 setStreamSuccess('Статус трансляции обновлён.');
             }
-        } catch {
-            setStreamError('Не удалось обновить статус трансляции');
+        } catch (err) {
+            if (err.status === 403) {
+                setStreamError(err.message || 'Недостаточно прав для изменения чужого стрима');
+            } else {
+                setStreamError(err.message || 'Не удалось обновить статус трансляции');
+            }
         } finally {
             setStreamLoading(false);
+        }
+    };
+
+    const copyToClipboard = async (value) => {
+        if (!value) return;
+        try {
+            await navigator.clipboard.writeText(value);
+            setStreamSuccess('Скопировано в буфер обмена');
+        } catch {
+            setStreamError('Не удалось скопировать в буфер обмена');
         }
     };
 
@@ -255,7 +280,7 @@ function UserPage() {
                         В эфир
                     </Button>
                     <Button variant="contained" color="warning" onClick={() => handleChangeStreamStatus('upcoming')} disabled={streamLoading || !currentStream}>
-                        На паузу
+                        Upcoming
                     </Button>
                     <Button variant="contained" color="inherit" onClick={() => handleChangeStreamStatus('ended')} disabled={streamLoading || !currentStream}>
                         Завершить
@@ -267,8 +292,18 @@ function UserPage() {
                 {obsConfig && (
                     <Box sx={{ marginTop: 3, backgroundColor: '#121212', borderRadius: 2, padding: 2 }}>
                         <Typography variant="h6" sx={{ marginBottom: 1 }}>Настройка OBS</Typography>
-                        <Typography variant="body1"><strong>Server:</strong> {obsConfig.serverUrl}</Typography>
-                        <Typography variant="body1"><strong>Stream Key:</strong> {obsConfig.streamKey}</Typography>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body1"><strong>Server:</strong> {obsConfig.serverUrl}</Typography>
+                            <Button size="small" variant="outlined" onClick={() => copyToClipboard(obsConfig.serverUrl)}>
+                                Копировать
+                            </Button>
+                        </Box>
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexWrap: 'wrap' }}>
+                            <Typography variant="body1"><strong>Stream Key:</strong> {obsConfig.streamKey}</Typography>
+                            <Button size="small" variant="outlined" onClick={() => copyToClipboard(obsConfig.streamKey)}>
+                                Копировать
+                            </Button>
+                        </Box>
                         <Typography variant="body2" sx={{ marginTop: 1, color: '#bdbdbd' }}>
                             Полный URL: {obsConfig.fullUrl}
                         </Typography>
@@ -361,6 +396,7 @@ function UserPage() {
                 <Box sx={{ width: isMobile ? '90%' : 400, zIndex: 1000, boxShadow: '0px 4px 10px rgba(0,0,0,0.3)', marginTop: isMobile ? 2 : 0 }}>
                     <CreateMoviePage />
                 </Box>
+                {hasStudioAccess && renderStreamerPanel()}
             </Box>
         );
     }
@@ -384,7 +420,7 @@ function UserPage() {
                     <Typography variant={isMobile ? 'h5' : 'h4'} align='center' sx={{ marginTop: 3 }}>В разработке</Typography>
                 </Paper>
             </Box>
-            {user.role === 'streamer' && renderStreamerPanel()}
+            {hasStudioAccess && renderStreamerPanel()}
         </Box>
     );
 }
