@@ -8,9 +8,10 @@ function LivePage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [tab, setTab] = useState(0);
+    const token = localStorage.getItem('token');
 
     useEffect(() => {
-        getLivestreams()
+        getLivestreams(token)
             .then((data) => {
                 setStreams(Array.isArray(data) ? data : []);
                 setLoading(false);
@@ -20,7 +21,7 @@ function LivePage() {
                 setError('Не удалось загрузить трансляции');
                 setLoading(false);
             });
-    }, []);
+    }, [token]);
 
     const liveStreams = streams.filter((s) => s.status === 'live');
     const upcomingStreams = streams.filter((s) => s.status === 'upcoming');

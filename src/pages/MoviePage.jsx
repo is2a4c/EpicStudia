@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {API_URL, getMovieById, addComment, getCommentByMovieId, getUserProfile, setMovieRating} from '../services/api';
-import Hls from 'hls.js';
+import { initVideoStream, destroyVideoStream } from '../services/streaming';
 import {
     Box,
     Typography,
@@ -46,43 +46,18 @@ function MoviePage() {
 
     const token = localStorage.getItem('token');
 
-    // Инициализация HLS
     const initHLS = (qualityLevel) => {
         const video = videoRef.current;
         if (!video) return;
 
-        // Для HLS используем отдельный endpoint
         const streamUrl = `${API_URL}/movies/${id}/stream.m3u8?quality=${qualityLevel}`;
-        
-        if (Hls.isSupported()) {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-            }
-            
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: false,
-                backBufferLength: 90
-            });
-            
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
-            hlsRef.current = hls;
-            
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch(e => console.log('Autoplay prevented:', e));
-            });
-            
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS error:', data);
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            // Native HLS support (Safari)
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', () => {
-                video.play();
-            });
-        }
+
+        initVideoStream({
+            video,
+            streamUrl,
+            hlsRef,
+            onError: (data) => console.error('HLS error:', data),
+        });
     };
 
     useEffect(() => {
@@ -90,7 +65,6 @@ function MoviePage() {
             .then((data) => {
                 setMovie(data);
                 setRating(data.rating || 0);
-                // Инициализируем HLS после загрузки данных о фильме
                 setTimeout(() => initHLS(quality), 100);
             })
             .catch(() => setMovie(null));
@@ -146,11 +120,7 @@ function MoviePage() {
             if (intervalId) {
                 clearInterval(intervalId);
             }
-            // Очистка HLS при размонтировании
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
+            destroyVideoStream(hlsRef);
         };
     }, [fetchComments]);
 
@@ -209,8 +179,7 @@ function MoviePage() {
             const currentTime = video.currentTime;
             const wasPlaying = !video.paused;
 
-            hlsRef.current.destroy();
-            hlsRef.current = null;
+            destroyVideoStream(hlsRef);
 
             setTimeout(() => {
                 initHLS(newQuality);
