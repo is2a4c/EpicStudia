@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
 import { API_URL, getLivestreamById } from '../services/api';
-import Hls from 'hls.js';
+import { initVideoStream, destroyVideoStream } from '../services/streaming';
 import {
     Box,
     Typography,
@@ -28,9 +28,10 @@ function LiveStreamPage() {
     const [isFullscreen, setIsFullscreen] = useState(false);
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
+    const token = localStorage.getItem('token');
 
     useEffect(() => {
-        getLivestreamById(id)
+        getLivestreamById(id, token)
             .then((data) => {
                 setStream(data);
                 setLoading(false);
@@ -41,7 +42,7 @@ function LiveStreamPage() {
                 setLoading(false);
             });
         // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [id]);
+    }, [id, token]);
 
     const initHLS = () => {
         const video = videoRef.current;
@@ -49,42 +50,17 @@ function LiveStreamPage() {
 
         const streamUrl = `${API_URL}/live/${id}/stream`;
 
-        if (Hls.isSupported()) {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-            }
-
-            const hls = new Hls({
-                enableWorker: true,
-                lowLatencyMode: false,
-                backBufferLength: 90,
-            });
-
-            hls.loadSource(streamUrl);
-            hls.attachMedia(video);
-            hlsRef.current = hls;
-
-            hls.on(Hls.Events.MANIFEST_PARSED, () => {
-                video.play().catch((e) => console.log('Autoplay prevented:', e));
-            });
-
-            hls.on(Hls.Events.ERROR, (event, data) => {
-                console.error('HLS error:', data);
-            });
-        } else if (video.canPlayType('application/vnd.apple.mpegurl')) {
-            video.src = streamUrl;
-            video.addEventListener('loadedmetadata', () => {
-                video.play();
-            });
-        }
+        initVideoStream({
+            video,
+            streamUrl,
+            hlsRef,
+            onError: (data) => console.error('HLS error:', data),
+        });
     };
 
     useEffect(() => {
         return () => {
-            if (hlsRef.current) {
-                hlsRef.current.destroy();
-                hlsRef.current = null;
-            }
+            destroyVideoStream(hlsRef);
         };
     }, []);
 

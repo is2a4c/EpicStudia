@@ -104,12 +104,37 @@ export const setMovieRating = async (movieId, rating, token) => {
     return response.data;
 };
 
-export const getLivestreams = async () => {
-    const response = await api.get('/live');
+export const getLivestreams = async (token) => {
+    const response = await api.get('/live', {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
     return response.data;
 };
 
-export const getLivestreamById = async (id) => {
-    const response = await api.get(`/live/${id}`);
+export const getLivestreamById = async (id, token) => {
+    const response = await api.get(`/live/${id}`, {
+        headers: token ? { 'Authorization': `Bearer ${token}` } : {},
+    });
+    return response.data;
+};
+
+export const createLivestream = async ({ title, description, streamer }, token) => {
+    const response = await api.post('/live', { title, description, streamer }, {
+        headers: { 'Authorization': `Bearer ${token}` },
+    });
+    return response.data;
+};
+
+export const updateLivestreamStatus = async (id, status, token) => {
+    const response = await api.patch(`/live/${id}/status`, { status }, {
+        headers: { 'Authorization': `Bearer ${token}` },
+    });
+    return response.data;
+};
+
+export const getLivestreamObsConfig = async (id, token) => {
+    const response = await api.get(`/live/${id}/stream`, {
+        headers: { 'Authorization': `Bearer ${token}` },
+    });
     return response.data;
 };
