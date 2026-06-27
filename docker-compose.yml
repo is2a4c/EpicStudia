@@ -55,18 +55,26 @@ services:
       start_period: 20s
 
   mediamtx:
-    image: bluenviron/mediamtx:latest
+    # -ffmpeg: содержит ffprobe/wget для runOnReady-хука (ограничение до 1080).
+    image: bluenviron/mediamtx:latest-ffmpeg
     restart: unless-stopped
     environment:
       MTX_RTSP: "no"
       MTX_WEBRTC: "no"
       MTX_SRT: "no"
-      MTX_API: "no"
       MTX_RTMP: "yes"
       MTX_HLS: "yes"
       MTX_HLSADDRESS: ":8888"
       MTX_HLSALWAYSREMUX: "yes"
       MTX_HLSVARIANT: mpegts
+      # Внутренний API для кика издателей выше 1080.
+      MTX_API: "yes"
+      MTX_APIADDRESS: "127.0.0.1:9997"
+      # Хук при публикации: отклонять источники с высотой > 1080.
+      MTX_PATHDEFAULTS_RUNONREADY: "sh /scripts/maxres.sh"
+      MTX_PATHDEFAULTS_RUNONREADYRESTART: "no"
+    volumes:
+      - ./docker/mediamtx/maxres.sh:/scripts/maxres.sh:ro
     ports:
       # RTMP-приём от OBS (наружу через Zoraxy stream :1935). HLS (8888) — только внутри.
       - "${RTMP_PORT:-1935}:1935"
