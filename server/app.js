@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const logger = require('morgan');
+const cookieParser = require('cookie-parser');
 
 const indexRouter = require('./routes/index');
 const moviesRouter = require('./routes/movies');
@@ -35,6 +36,9 @@ const api = '/api/v1';
 app.use(logger('dev'));
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+// cookie-parser нужен глобально: authenticateToken читает req.cookies.token,
+// а маршруты movies/live/search своего парсера не подключают.
+app.use(cookieParser());
 
 // Liveness-проба для Docker healthcheck и reverse proxy.
 // Не зависит от БД, чтобы отражать готовность процесса.

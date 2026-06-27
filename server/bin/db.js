@@ -19,7 +19,7 @@ db.connect((err) => {
       username VARCHAR(255) UNIQUE,
       password VARCHAR(255),
       role VARCHAR(50) DEFAULT 'user',
-      blocked BOOLEAN DEFAULT 'false'
+      blocked BOOLEAN DEFAULT FALSE
     )`);
 
     db.query(`CREATE TABLE IF NOT EXISTS movies (
