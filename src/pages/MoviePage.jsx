@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {API_URL, getMovieById, addComment, getCommentByMovieId, getUserProfile, setMovieRating} from '../services/api';
-import { initVideoStream, destroyVideoStream } from '../services/streaming';
 import {
     Box,
     Typography,
@@ -40,35 +39,18 @@ function MoviePage() {
     const [currentTime, setCurrentTime] = useState(0);
     const [duration, setDuration] = useState(0);
     const videoRef = useRef(null);
-    const hlsRef = useRef(null);
     const [user, setUser] = useState(null);
     const MAX_COMMENT_LENGTH = 70;
 
     const token = localStorage.getItem('token');
-
-    const initHLS = (qualityLevel) => {
-        const video = videoRef.current;
-        if (!video) return;
-
-        const streamUrl = `${API_URL}/movies/${id}/stream.m3u8?quality=${qualityLevel}`;
-
-        initVideoStream({
-            video,
-            streamUrl,
-            hlsRef,
-            onError: (data) => console.error('HLS error:', data),
-        });
-    };
 
     useEffect(() => {
         getMovieById(id)
             .then((data) => {
                 setMovie(data);
                 setRating(data.rating || 0);
-                setTimeout(() => initHLS(quality), 100);
             })
             .catch(() => setMovie(null));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [id]);
 
     const fetchComments = useCallback(async () => {
@@ -120,7 +102,6 @@ function MoviePage() {
             if (intervalId) {
                 clearInterval(intervalId);
             }
-            destroyVideoStream(hlsRef);
         };
     }, [fetchComments]);
 
@@ -171,26 +152,9 @@ function MoviePage() {
     };
 
     const handleQualityChange = (event) => {
-        const newQuality = event.target.value;
-        setQuality(newQuality);
-
-        const video = videoRef.current;
-        if (video && hlsRef.current) {
-            const currentTime = video.currentTime;
-            const wasPlaying = !video.paused;
-
-            destroyVideoStream(hlsRef);
-
-            setTimeout(() => {
-                initHLS(newQuality);
-                if (video.readyState >= 2) {
-                    video.currentTime = currentTime;
-                    if (wasPlaying) {
-                        video.play().catch(e => console.log('Play after quality change:', e));
-                    }
-                }
-            }, 100);
-        }
+        // Бэкенд отдаёт единый mp4-поток (HLS/качество не реализованы на сервере);
+        // меняем только значение в селекторе, src видео обновится через ре-рендер.
+        setQuality(event.target.value);
     };
 
     const handleVolumeChange = (event, newValue) => {

@@ -15,6 +15,7 @@ import {
 import CreateMoviePage from "./CreatMoviePage.jsx";
 
 const STREAM_MANAGEMENT_ROLES = ['streamer', 'admin', 'owner'];
+const ADMIN_ROLES = ['admin', 'owner'];
 
 function UserPage() {
     const [user, setUser] = useState(null);
@@ -46,7 +47,7 @@ function UserPage() {
             try {
                 const response = await getUserProfile(token);
                 setUser(response);
-                if (response.role === 'admin') {
+                if (ADMIN_ROLES.includes(response.role)) {
                     const usersResponse = await getUsers(token);
                     setUsers(usersResponse);
                 }
@@ -335,7 +336,7 @@ function UserPage() {
         );
     }
 
-    if (user.role === 'admin') {
+    if (ADMIN_ROLES.includes(user.role)) {
         return (
             <Box sx={{ display: 'flex', flexDirection: isMobile ? 'column' : 'row', alignItems: 'center', justifyContent: 'center', minHeight: 'auto', backgroundColor: '#121212', color: '#fff', gap: isMobile ? 2 : 4, padding: isMobile ? 2 : 4 }}>
                 <Box sx={{

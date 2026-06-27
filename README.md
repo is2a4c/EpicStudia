@@ -190,31 +190,48 @@ EpicStudia/
 
 ## 📡 API
 
-Базовый URL: `/api/v1`
+Базовый URL: `/api/v1`. Почти все эндпоинты требуют авторизации (JWT в httpOnly-куке или заголовке `Authorization: Bearer`). Liveness — `GET /health` (вне `/api/v1`).
 
 ### Эндпоинты
 
 #### Фильмы
 | Метод | Эндпоинт | Описание |
 |-------|----------|----------|
-| GET | `/movies` | Получить список фильмов |
-| GET | `/movies/:id` | Получить фильм по ID |
-| GET | `/movies/:id/stream` | Стриминг видео |
-| POST | `/movies/upload` | Загрузить фильм |
-| GET | `/movies/search` | Поиск по хэштегам |
-| POST | `/movies/:id/rating` | Оценить фильм |
+| GET | `/movies` | Список фильмов |
+| GET | `/movies/:id` | Фильм по ID |
+| GET | `/movies/:id/stream` | Стриминг видео (mp4, Range) |
+| POST | `/movies/upload` | Загрузить фильм (admin/owner, multipart) |
+| GET | `/movies/:id/comments` | Комментарии фильма |
 | POST | `/movies/:id/comment` | Добавить комментарий |
-| GET | `/movies/:id/comments` | Получить комментарии |
+| GET | `/movies/:id/ratings` | Оценки фильма |
+| POST | `/movies/:id/ratings` | Оценить фильм (1–5) |
+
+#### Поиск
+| Метод | Эндпоинт | Описание |
+|-------|----------|----------|
+| GET | `/search?hashtags=tag1,tag2` | Поиск фильмов по хэштегам |
 
 #### Пользователи
 | Метод | Эндпоинт | Описание |
 |-------|----------|----------|
-| POST | `/user/register` | Регистрация |
-| POST | `/user/login` | Вход |
-| GET | `/user/profile` | Получить профиль |
-| GET | `/user/all` | Все пользователи (admin) |
-| POST | `/user/:id/block` | Заблокировать (admin) |
-| POST | `/user/:id/role` | Изменить роль (admin) |
+| POST | `/user/register` | Регистрация (возвращает токен + куку) |
+| POST | `/user/login` | Вход (возвращает токен + куку) |
+| POST | `/user/logout` | Выход |
+| GET | `/user/profile` | Текущий профиль |
+| GET | `/user/all` | Все пользователи (admin/owner) |
+| GET | `/user/:id` | Пользователь по ID (admin/owner) |
+| DELETE | `/user/:id` | Удалить пользователя (admin/owner) |
+| POST | `/user/:id/block` | Заблокировать/разблокировать (admin/owner) |
+| POST | `/user/:id/role` | Изменить роль (admin/owner) |
+
+#### Трансляции
+| Метод | Эндпоинт | Описание |
+|-------|----------|----------|
+| GET | `/live` | Список трансляций |
+| GET | `/live/:id` | Трансляция по ID |
+| POST | `/live` | Создать трансляцию (streamer/admin/owner) |
+| PATCH | `/live/:id/status` | Сменить статус (live/upcoming/ended) |
+| GET | `/live/:id/stream` | Данные публикации стрима |
 
 ## 🤝 Вклад в проект
 
