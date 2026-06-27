@@ -16,6 +16,13 @@ dist-ssr
 .env
 .env.local
 .env.*.local
+.env.production
+
+# Backend runtime data (хранится в Docker volumes)
+server/uploads/
+server/data/
+*.sqlite
+*.sqlite3
 
 # Editor directories and files
 .vscode/*

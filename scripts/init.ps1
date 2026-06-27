@@ -25,15 +25,9 @@ try {
 Write-Host "📦 Установка зависимостей фронтенда..." -ForegroundColor Yellow
 npm install
 
-# Проверка наличия папки с API
-if (-not (Test-Path "../EpicStudiaApi")) {
-    Write-Host "📥 Клонирование репозитория API..." -ForegroundColor Yellow
-    gh repo clone PashaBritva/EpicStudiaApi ../EpicStudiaApi
-}
-
-# Установка зависимостей API
+# Установка зависимостей API (server/ внутри этого же репозитория)
 Write-Host "📦 Установка зависимостей API..." -ForegroundColor Yellow
-Push-Location ../EpicStudiaApi
+Push-Location server
 npm install
 Pop-Location
 

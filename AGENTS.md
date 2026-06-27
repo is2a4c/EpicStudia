@@ -2,18 +2,23 @@
 
 ## Repo structure
 
-Frontend-only repo. The API backend lives in a **separate repo** (`PashaBritva/EpicStudiaApi`) expected at `../EpicStudiaApi` as a sibling directory. `npm run api` and `npm run api:install` both `cd` there.
+Monorepo. Frontend (Vite/React) lives at the repo root; the API backend lives in `server/` (Node.js/Express). `npm run api` and `npm run api:install` `cd server`. No external sibling repo is required.
+
+The whole stack (frontend + API + MariaDB) runs via a single `docker compose up -d --build` — see `docker-compose.yml`, `server/Dockerfile`, `docker/web.Dockerfile`, `docker/nginx/default.conf`.
 
 ## Quick start
 
 ```sh
-git clone https://github.com/PashaBritva/EpicStudia.git
-# API must be cloned manually or via scripts/init.sh:
-gh repo clone PashaBritva/EpicStudiaApi ../EpicStudiaApi
-
+git clone https://github.com/is2a4c/EpicStudia.git
+cd EpicStudia
 cp .env.example .env
-npm run install:all    # installs both frontend + API deps
-npm run dev:all        # runs both frontend (:3000) + API (:5000)
+
+# Docker (full stack):
+docker compose up -d --build      # http://localhost
+
+# or local dev:
+npm run install:all               # frontend + API (server/) deps
+npm run dev:all                   # frontend (:3000) + API (:5000)
 ```
 
 ## Key commands
@@ -22,14 +27,15 @@ npm run dev:all        # runs both frontend (:3000) + API (:5000)
 |---|---|
 | `npm run dev` | Vite frontend on `0.0.0.0:3000` |
 | `npm run dev:all` | Frontend + API concurrently |
-| `npm run api` | Starts API from `../EpicStudiaApi` |
+| `npm run api` | Starts API from `server/bin/www` |
 | `npm run build` | Production build (`vite build`) |
-| `npm run lint` | ESLint (flat config `eslint.config.js`) |
+| `npm run lint` | ESLint (flat config; `server/` is ignored) |
 | `npm run lint:fix` | ESLint with `--fix` |
 | `npm run preview` | Preview production build on `0.0.0.0:3000` |
 | `npm run install:all` | Install both frontend + API deps |
+| `docker compose up -d --build` | Full stack (web + api + db) on `http://localhost` |
 
-No test suite exists (`npm test` is a placeholder).
+API tests: `npm run test:api` (basic node assertions in `server/test/`). Frontend `npm test` is a placeholder.
 
 ## Husky hooks (automated)
 

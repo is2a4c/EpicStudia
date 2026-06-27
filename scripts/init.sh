@@ -25,17 +25,11 @@ echo "✅ npm: $(npm --version)"
 echo "📦 Установка зависимостей фронтенда..."
 npm install
 
-# Проверка наличия папки с API
-if [ ! -d "../EpicStudiaApi" ]; then
-    echo "📥 Клонирование репозитория API..."
-    gh repo clone PashaBritva/EpicStudiaApi ../EpicStudiaApi
-fi
-
-# Установка зависимостей API
+# Установка зависимостей API (server/ внутри этого же репозитория)
 echo "📦 Установка зависимостей API..."
-cd ../EpicStudiaApi
+cd server
 npm install
-cd ../EpicStudia
+cd ..
 
 # Копирование .env.example если .env не существует
 if [ ! -f ".env" ]; then

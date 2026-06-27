@@ -6,15 +6,19 @@
   "scripts": {
     "dev": "vite --port 3000 --host",
     "dev:all": "concurrently --kill-others-on-fail \"npm run dev\" \"npm run api\"",
-    "api": "cd ../EpicStudiaApi && node bin/www",
-    "api:install": "cd ../EpicStudiaApi && npm install",
+    "api": "cd server && node bin/www",
+    "api:install": "cd server && npm install",
     "install:all": "npm install && npm run api:install",
     "build": "vite build",
     "lint": "eslint .",
     "lint:fix": "eslint . --fix",
     "preview": "vite preview --port 3000 --host",
     "prepare": "husky",
-    "test": "echo \"Tests coming soon\""
+    "test": "echo \"Tests coming soon\"",
+    "test:api": "cd server && npm test",
+    "docker:up": "docker compose up -d --build",
+    "docker:down": "docker compose down",
+    "docker:logs": "docker compose logs -f"
   },
   "lint-staged": {
     "*.{js,jsx}": [
