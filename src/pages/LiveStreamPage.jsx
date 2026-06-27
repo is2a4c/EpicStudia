@@ -24,7 +24,8 @@ function LiveStreamPage() {
     const [loading, setLoading] = useState(true);
     const [error, setError] = useState(null);
     const [isPlaying, setIsPlaying] = useState(true);
-    const [isMuted, setIsMuted] = useState(false);
+    // Стартуем в muted, иначе браузер блокирует автоплей живого потока.
+    const [isMuted, setIsMuted] = useState(true);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
@@ -207,6 +208,9 @@ function LiveStreamPage() {
                     <video
                         ref={videoRef}
                         style={videoStyles}
+                        muted
+                        autoPlay
+                        playsInline
                         onContextMenu={(e) => e.preventDefault()}
                     />
                     <Box
