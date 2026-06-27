@@ -37,66 +37,86 @@
 
 **Backend:**
 - **Node.js + Express** — сервер
-- **SQLite/MySQL/PostgreSQL** — база данных
+- **MariaDB / MySQL** — база данных (клиент `mysql2`)
 - **JWT** — аутентификация
 - **Multer** — загрузка файлов
 - **FFmpeg** — обработка видео
 
-## 🚀 Быстрый старт
+Фронтенд и бэкенд живут в одном репозитории: фронт в корне, API — в каталоге `server/`.
+
+## 🚀 Быстрый старт (Docker, рекомендуется)
+
+Весь проект (фронтенд + API + база данных) поднимается одной командой.
 
 ### Требования
-
-- Node.js 18+
-- npm 9+
-- Git
-
-### Установка
-
-#### Автоматическая установка (рекомендуется)
-
-```bash
-# Для macOS/Linux
-./scripts/init.sh
-
-# Для Windows (PowerShell)
-./scripts/init.ps1
-```
-
-#### Ручная установка
-
-1. Склонируйте репозиторий:
-   ```bash
-   git clone https://github.com/PashaBritva/EpicStudia.git
-   cd EpicStudia
-   ```
-
-2. Установите зависимости:
-   ```bash
-   npm run install:all
-   ```
-
-3. Настройте окружение:
-   ```bash
-   # Скопируйте .env.example в .env
-   cp .env.example .env
-   
-   # Отредактируйте .env при необходимости
-   ```
+- Docker 24+ и Docker Compose v2
 
 ### Запуск
-
 ```bash
-# Запуск фронтенда и API одновременно
-npm run dev:all
-
-# Только фронтенд
-npm run dev
-
-# Только API
-npm run api
+cp .env.example .env          # создать конфиг (при необходимости поменять секреты)
+docker compose up -d --build  # собрать и запустить всё
+docker compose ps             # статус контейнеров
+docker compose logs -f        # логи в реальном времени
+docker compose down           # остановить
 ```
 
-Приложение будет доступно по адресу: http://localhost
+После старта сайт доступен на **http://localhost** (порт меняется через `WEB_PORT` в `.env`).
+
+### Что внутри
+| Сервис | Назначение | Наружный порт |
+|--------|------------|---------------|
+| `web`  | Сборка фронта (Vite) + nginx reverse proxy | `80` (только он) |
+| `api`  | Node.js/Express API (`server/`) | нет, только внутри сети |
+| `db`   | MariaDB | нет, только внутри сети |
+
+Запросы фронта идут на относительный `/api/v1`, nginx проксирует их на `api:5000`.
+Наружу торчит только `web`; `api` и `db` доступны исключительно внутри Docker-сети.
+
+### Где хранятся данные
+Данные переживают пересоздание контейнеров благодаря именованным volume:
+| Volume | Содержимое | Точка монтирования |
+|--------|------------|--------------------|
+| `db_data` | База данных MariaDB | `db:/var/lib/mysql` |
+| `api_uploads` | Загруженные видео/медиа | `api:/app/uploads` |
+
+### Обязательные переменные окружения (`.env`)
+| Переменная | Назначение |
+|------------|------------|
+| `WEB_PORT` | Внешний порт сайта (по умолчанию `80`) |
+| `PORT` | Внутренний порт API (по умолчанию `5000`) |
+| `JWT_SECRET` | Длинный случайный секрет для JWT (`openssl rand -hex 48`) |
+| `DB_NAME` / `DB_USER` / `DB_PASSWORD` | Параметры подключения к БД |
+| `DB_ROOT_PASSWORD` | Root-пароль MariaDB |
+
+### Проверка после запуска
+```bash
+curl -I http://localhost            # 200 — фронтенд отдаётся nginx
+curl http://localhost/health        # {"status":"ok"} — API жив через прокси
+curl -i http://localhost/api/v1/    # 202 + {"VERSION":...} — публичный эндпоинт API
+curl -i http://localhost/api/v1/movies   # 401 — эндпоинт защищён, но прокси+API работают
+```
+
+Полезные команды диагностики:
+```bash
+docker compose logs --tail=100 api
+docker compose logs --tail=100 web
+docker compose config            # валидация compose-файла
+```
+
+## 🧑‍💻 Локальная разработка без Docker
+
+### Требования
+- Node.js 18+, npm 9+
+- Запущенная MariaDB/MySQL (задайте `DB_URL`, `DB_USER`, `DB_PASSWORD`, `DB_NAME` в окружении API)
+
+```bash
+npm run install:all   # зависимости фронта + API (server/)
+cp .env.example .env
+
+npm run dev:all       # фронт (:3000) + API (:5000) одновременно
+npm run dev           # только фронт
+npm run api           # только API (server/bin/www)
+```
 
 ## 👨‍💻 Разработка
 
@@ -142,31 +162,29 @@ chore: изменения в сборке
 
 ```
 EpicStudia/
-├── .github/                    # GitHub конфигурация
-│   ├── workflows/             # CI/CD pipeline
-│   ├── ISSUE_TEMPLATE/        # Шаблоны issue
-│   └── PULL_REQUEST_TEMPLATE/ # Шаблон PR
-├── scripts/                   # Скрипты инициализации
-├── src/
+├── src/                       # Фронтенд (React + Vite)
 │   ├── components/            # React компоненты
-│   │   ├── Header.jsx         # Шапка
-│   │   ├── MovieCard.jsx      # Карточка фильма
-│   │   └── ...
 │   ├── pages/                 # Страницы
-│   │   ├── HomePage.jsx       # Главная
-│   │   ├── MoviePage.jsx      # Фильм
-│   │   ├── UserPage.jsx       # Профиль
-│   │   ├── SearchPage.jsx     # Поиск
-│   │   └── CreateMoviePage.jsx # Загрузка фильма
-│   ├── services/              # API сервисы
-│   │   └── api.js
+│   ├── services/api.js        # HTTP-клиент (baseURL = VITE_API_URL || /api/v1)
 │   ├── theme/                 # Тема Material UI
-│   │   └── theme.jsx
 │   ├── App.jsx                # Главный компонент
 │   └── main.jsx               # Точка входа
-├── .env                       # Переменные окружения
-├── .env.example               # Пример окружения
-├── package.json               # Зависимости
+├── public/                    # Статика фронта
+├── server/                    # Бэкенд (Node.js/Express API)
+│   ├── bin/www                # Точка входа API
+│   ├── bin/db.js              # Подключение к БД и схема
+│   ├── routes/                # API-маршруты (movies, user, live, search)
+│   ├── services/streaming.js  # Стриминг видео (Range-запросы)
+│   ├── app.js                 # Express-приложение (+ /health)
+│   ├── Dockerfile             # Образ API
+│   └── package.json           # Зависимости API
+├── docker/
+│   ├── nginx/default.conf     # Reverse proxy + SPA
+│   └── web.Dockerfile         # Сборка фронта + nginx
+├── docker-compose.yml         # Оркестрация web + api + db
+├── .env.example               # Пример окружения (скопировать в .env)
+├── .dockerignore              # Исключения для образа web
+├── package.json               # Зависимости и скрипты фронта
 └── vite.config.js             # Конфигурация Vite
 ```
 

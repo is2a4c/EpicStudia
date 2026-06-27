@@ -1,127 +1,58 @@
-# Deployment Guide (Frontend + API in separate repos)
+# Deployment Guide (единый Docker-стек)
 
-Этот проект и API находятся в разных репозиториях, поэтому лучший вариант: **раздельный деплой**.
+Фронтенд и API теперь живут в одном репозитории (фронт в корне, API в `server/`)
+и поднимаются одной командой через Docker Compose.
 
-## Recommended architecture
+## Архитектура
 
-- `EpicStudia` (frontend): сборка Vite (`dist`) и выкладка в директорию nginx.
-- `EpicStudiaApi` (backend): отдельный deploy-пайплайн и отдельный процесс (pm2/systemd/docker).
-- Сервер:
-  - `https://your-domain` -> frontend (static files from `dist`)
-  - `https://your-domain/api/v1` -> proxy на API (`localhost:5000`)
-
-## Frontend deploy (this repo)
-
-В репозитории уже добавлен workflow:
-
-- `.github/workflows/deploy-frontend.yml`
-
-Он делает:
-1. `npm ci`
-2. `npm run lint`
-3. `npm run build`
-4. rsync `dist/` на сервер по SSH
-
-### Required GitHub Secrets (EpicStudia)
-
-- `VITE_API_URL` (example: `https://your-domain/api/v1`)
-- `DEPLOY_SSH_KEY` (private key)
-- `DEPLOY_HOST` (example: `1.2.3.4`)
-- `DEPLOY_USER` (example: `deploy`)
-- `DEPLOY_PORT` (example: `22`)
-- `FRONTEND_DEPLOY_PATH` (example: `/var/www/epicstudia`)
-
-## API deploy (EpicStudiaApi repo)
-
-Ниже рекомендуемый workflow-шаблон для API-репозитория:
-
-```yaml
-name: Deploy API
-
-on:
-  push:
-    branches: [ main, master ]
-  workflow_dispatch:
-
-concurrency:
-  group: deploy-api-production
-  cancel-in-progress: true
-
-jobs:
-  deploy:
-    runs-on: ubuntu-latest
-    environment: production
-    steps:
-      - uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: '20.x'
-          cache: npm
-
-      - name: Install dependencies
-        run: npm ci
-
-      - name: Deploy API source to server
-        uses: easingthemes/ssh-deploy@v5.1.0
-        with:
-          SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
-          REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
-          REMOTE_USER: ${{ secrets.DEPLOY_USER }}
-          REMOTE_PORT: ${{ secrets.DEPLOY_PORT }}
-          SOURCE: ./
-          TARGET: ${{ secrets.API_DEPLOY_PATH }}
-          ARGS: "-rlgoDzvc --delete --exclude .git --exclude node_modules"
-
-      - name: Restart API on server
-        uses: appleboy/ssh-action@v1.0.3
-        with:
-          host: ${{ secrets.DEPLOY_HOST }}
-          username: ${{ secrets.DEPLOY_USER }}
-          key: ${{ secrets.DEPLOY_SSH_KEY }}
-          port: ${{ secrets.DEPLOY_PORT }}
-          script: |
-            cd ${{ secrets.API_DEPLOY_PATH }}
-            npm ci --omit=dev
-            pm2 restart epicstudia-api || pm2 start app.js --name epicstudia-api
+```
+            ┌─────────────────────── Docker network (internal) ───────────────────────┐
+ Интернет → │  web (nginx :8080)  →  api (Express :5000)  →  db (MariaDB :3306)         │
+   :80      │   • отдаёт dist/        • /api/v1/*               • volume db_data         │
+            │   • proxy /api/, /health • volume api_uploads                              │
+            └────────────────────────────────────────────────────────────────────────┘
 ```
 
-### Required GitHub Secrets (EpicStudiaApi)
+Наружу публикуется только `web` (порт `WEB_PORT`, по умолчанию 80). `api` и `db`
+доступны исключительно внутри Docker-сети.
 
-- `DEPLOY_SSH_KEY`
-- `DEPLOY_HOST`
-- `DEPLOY_USER`
-- `DEPLOY_PORT`
-- `API_DEPLOY_PATH` (example: `/opt/epicstudia-api`)
+## Запуск
 
-## Nginx example
-
-```nginx
-server {
-    listen 80;
-    server_name your-domain;
-
-    root /var/www/epicstudia;
-    index index.html;
-
-    location / {
-        try_files $uri /index.html;
-    }
-
-    location /api/ {
-        proxy_pass http://127.0.0.1:5000/;
-        proxy_http_version 1.1;
-        proxy_set_header Host $host;
-        proxy_set_header X-Real-IP $remote_addr;
-        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-        proxy_set_header X-Forwarded-Proto $scheme;
-    }
-}
+```bash
+cp .env.example .env            # затем сменить JWT_SECRET и пароли БД
+docker compose up -d --build
+docker compose ps
+docker compose logs -f
 ```
 
-## Why separate deploy pipelines
+Остановка: `docker compose down` (данные сохраняются в volume `db_data` и `api_uploads`).
 
-- Репозитории независимы -> релизы независимы.
-- Ошибка фронта не блокирует релиз API и наоборот.
-- Проще rollback каждой части отдельно.
+## Переменные окружения
+
+См. `.env.example`. Обязательны: `JWT_SECRET`, `DB_NAME`, `DB_USER`, `DB_PASSWORD`,
+`DB_ROOT_PASSWORD`. Порт сайта меняется через `WEB_PORT`.
+
+## Безопасность контейнеров
+
+- Контейнеры `web` и `api` запускаются не от root (`api` — UID/GID `10001`,
+  `web` — образ `nginx-unprivileged`).
+- `cap_drop: [ALL]`, `security_opt: no-new-privileges:true`, `read_only: true`
+  для `web` и `api`; запись только в volume и `tmpfs`.
+- Нет `privileged`, нет монтирования `docker.sock`, нет проброса порта API наружу.
+- Секреты только в `.env` (в git не коммитится).
+
+## HTTPS (production)
+
+Куки авторизации выставляются с флагом `secure` (`server/routes/users.js`),
+поэтому в реальном продакшене сайт нужно открывать по HTTPS. Терминируйте TLS
+на внешнем reverse proxy / балансировщике (или добавьте отдельный nginx/Traefik
+перед сервисом `web`) и проксируйте на `web:8080`. Для локальной проверки по
+`http://localhost` инфраструктура (proxy + API + БД) работает, но браузер не
+сохранит `secure`-куку при входе по обычному http.
+
+## Обновление
+
+```bash
+git pull
+docker compose up -d --build      # пересборка изменённых образов
+```
