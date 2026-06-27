@@ -132,7 +132,7 @@ export const setRole = async (token, id, role) => {
 };
 
 export const getMoviesByHashtags = async (hashtags) => {
-    const response = await api.get('/movies/search', {
+    const response = await api.get('/search', {
         params: { hashtags },
     });
 

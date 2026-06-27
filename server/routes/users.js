@@ -48,7 +48,9 @@ async function loginToken(req, res) {
             path: '/',
             maxAge: 7 * 24 * 60 * 60 * 1000
         });
-        return res.status(200).json({ message: 'Успешный вход' });
+        // Токен также возвращается в теле, чтобы фронтенд мог хранить его
+        // (Bearer-авторизация) — иначе localStorage.token становится undefined.
+        return res.status(200).json({ message: 'Успешный вход', token });
     } catch (err) {
         return res.status(500).send(`Ошибка сервера: ${err}`);
     }
@@ -79,6 +81,16 @@ router.get('/all', authenticateToken, checkAdmin, async (req, res) => {
     try {
         const [rows] = await db.promise().query('SELECT id, username, role, blocked FROM users');
         res.status(200).json(rows);
+    } catch (err) {
+        res.status(500).send(`Ошибка сервера: ${err}`);
+    }
+});
+
+router.get('/:id', authenticateToken, checkAdmin, async (req, res) => {
+    try {
+        const [rows] = await db.promise().query('SELECT id, username, role, blocked FROM users WHERE id = ?', [req.params.id]);
+        if (rows.length === 0) return res.status(404).send('Пользователь не найден');
+        res.status(200).json(rows[0]);
     } catch (err) {
         res.status(500).send(`Ошибка сервера: ${err}`);
     }

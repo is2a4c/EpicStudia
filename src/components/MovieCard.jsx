@@ -180,9 +180,9 @@ function MovieCard({ movie }) {
                         {movie.hashtags.split(',').map((hashtag, index) => (
                             <Chip
                                 key={index}
-                                label={hashtag}
+                                label={hashtag.trim()}
                                 component={Link}
-                                to={`/movie/search/${hashtag.split('#')[1]}`}
+                                to={`/movie/search/${hashtag.trim().replace('#', '')}`}
                                 clickable
                                 sx={{
                                     backgroundColor: '#424242',

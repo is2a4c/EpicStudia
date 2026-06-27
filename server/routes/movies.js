@@ -3,6 +3,7 @@ const cors = require('cors');
 const multer = require('multer');
 const { db } = require('../bin/db');
 const path = require('path');
+const fs = require('fs');
 const { streamVideoFile } = require('../services/streaming');
 const { authenticateToken, checkAdmin } = require('./users')
 require('dotenv').config();
@@ -44,7 +45,23 @@ router.post('/upload', authenticateToken, checkAdmin, upload.single('fullMovie')
         [title, description, parsedHashtags.join(','), req.file.path],
         (err, results) => {
             if (err) return res.status(500).send('Ошибка при добавлении фильма');
-            res.status(201).json({ message: 'Фильм успешно загружен', filePath: req.file.path });
+
+            // Стриминг отдаёт файл по пути uploads/<id>/<id>.mp4, поэтому
+            // перекладываем загруженный файл в это место, иначе видео не играется.
+            const movieId = results.insertId;
+            const relPath = `uploads/${movieId}/${movieId}.mp4`;
+            const destDir = path.join(__dirname, '..', 'uploads', String(movieId));
+            const destPath = path.join(destDir, `${movieId}.mp4`);
+            try {
+                fs.mkdirSync(destDir, { recursive: true });
+                fs.renameSync(req.file.path, destPath);
+            } catch (moveErr) {
+                return res.status(500).send('Ошибка при сохранении видео');
+            }
+
+            db.query('UPDATE movies SET fullMovieUrl = ? WHERE id = ?', [relPath, movieId], () => {
+                res.status(201).json({ message: 'Фильм успешно загружен', filePath: relPath });
+            });
         }
     );
 });
@@ -98,7 +115,9 @@ router.get('/:id/ratings', authenticateToken, (req, res) => {
 })
 
 router.post('/:id/ratings', authenticateToken, (req, res) => {
-    const { userId, rating } = req.body;
+    const { rating } = req.body;
+    // userId берём из токена, а не из тела запроса (фронтенд его не присылает).
+    const userId = req.user.id;
 
     if (!userId || !rating || rating < 0 || rating > 5) {
         return res.status(400).send('Некорректные данные');
