@@ -54,6 +54,27 @@ services:
       retries: 3
       start_period: 20s
 
+  mediamtx:
+    image: bluenviron/mediamtx:latest
+    restart: unless-stopped
+    environment:
+      MTX_RTSP: "no"
+      MTX_WEBRTC: "no"
+      MTX_SRT: "no"
+      MTX_API: "no"
+      MTX_RTMP: "yes"
+      MTX_HLS: "yes"
+      MTX_HLSADDRESS: ":8888"
+      MTX_HLSALWAYSREMUX: "yes"
+      MTX_HLSVARIANT: mpegts
+    ports:
+      # RTMP-приём от OBS (наружу через Zoraxy stream :1935). HLS (8888) — только внутри.
+      - "${RTMP_PORT:-1935}:1935"
+    networks:
+      - internal
+    security_opt:
+      - no-new-privileges:true
+
   web:
     build:
       context: .
@@ -63,6 +84,8 @@ services:
     depends_on:
       api:
         condition: service_healthy
+      mediamtx:
+        condition: service_started
     restart: unless-stopped
     networks:
       - internal

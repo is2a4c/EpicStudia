@@ -1,6 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import { useParams } from 'react-router-dom';
-import { API_URL, getLivestreamById } from '../services/api';
+import { getLivestreamById } from '../services/api';
 import { initVideoStream, destroyVideoStream } from '../services/streaming';
 import {
     Box,
@@ -48,7 +48,9 @@ function LiveStreamPage() {
         const video = videoRef.current;
         if (!video) return;
 
-        const streamUrl = `${API_URL}/live/${id}/stream`;
+        // HLS-плейлист от медиасервера (MediaMTX), проксируется web-nginx на /hls/.
+        // OBS публикует rtmp://<host>/live/<id> → путь MediaMTX live/<id>.
+        const streamUrl = `/hls/live/${id}/index.m3u8`;
 
         initVideoStream({
             video,
