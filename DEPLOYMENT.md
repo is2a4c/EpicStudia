@@ -56,3 +56,12 @@ docker compose logs -f
 git pull
 docker compose up -d --build      # пересборка изменённых образов
 ```
+
+## Continuous deployment
+
+На проде настроен автодеплой: при push в `main` GitHub отправляет webhook на
+сервер, небольшой слушатель проверяет HMAC-подпись и выполняет
+`git reset --hard origin/main` + последовательную пересборку
+(`docker compose build api && build web && up -d`). Образы собираются по одному —
+сервер ограничен по памяти, параллельная сборка его кладёт. Секрет вебхука и
+эндпоинт хранятся вне репозитория.
