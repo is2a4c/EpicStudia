@@ -9,6 +9,7 @@ import {
     CircularProgress,
     Avatar,
     IconButton,
+    Slider,
 } from '@mui/material';
 import FiberManualRecordIcon from '@mui/icons-material/FiberManualRecord';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
@@ -26,6 +27,7 @@ function LiveStreamPage() {
     const [isPlaying, setIsPlaying] = useState(true);
     // Стартуем в muted, иначе браузер блокирует автоплей живого потока.
     const [isMuted, setIsMuted] = useState(true);
+    const [volume, setVolume] = useState(100);
     const [isFullscreen, setIsFullscreen] = useState(false);
     const videoRef = useRef(null);
     const hlsRef = useRef(null);
@@ -67,10 +69,23 @@ function LiveStreamPage() {
         };
     }, []);
 
+    // Догнать прямой эфир (последний доступный момент потока).
+    const seekToLive = () => {
+        const video = videoRef.current;
+        const hls = hlsRef.current;
+        if (!video) return;
+        if (hls && Number.isFinite(hls.liveSyncPosition)) {
+            video.currentTime = hls.liveSyncPosition;
+        } else if (video.seekable && video.seekable.length > 0) {
+            video.currentTime = video.seekable.end(video.seekable.length - 1);
+        }
+    };
+
     const togglePlay = () => {
         const video = videoRef.current;
         if (!video) return;
         if (video.paused) {
+            seekToLive(); // при снятии с паузы прыгаем к последней секунде эфира
             video.play();
             setIsPlaying(true);
         } else {
@@ -82,8 +97,24 @@ function LiveStreamPage() {
     const toggleMute = () => {
         const video = videoRef.current;
         if (!video) return;
-        setIsMuted(!isMuted);
-        video.muted = !video.muted;
+        const nextMuted = !video.muted;
+        video.muted = nextMuted;
+        setIsMuted(nextMuted);
+        // При включении звука с нулевой громкостью выставляем разумный уровень.
+        if (!nextMuted && video.volume === 0) {
+            video.volume = 0.5;
+            setVolume(50);
+        }
+    };
+
+    const handleVolumeChange = (event, newValue) => {
+        const video = videoRef.current;
+        setVolume(newValue);
+        if (!video) return;
+        video.volume = newValue / 100;
+        const shouldMute = newValue === 0;
+        video.muted = shouldMute;
+        setIsMuted(shouldMute);
     };
 
     const toggleFullscreen = () => {
@@ -229,6 +260,17 @@ function LiveStreamPage() {
                         <IconButton onClick={toggleMute} sx={{ color: '#fff' }}>
                             {isMuted ? <VolumeOffIcon /> : <VolumeUpIcon />}
                         </IconButton>
+                        <Box sx={{ width: 90, display: 'flex', alignItems: 'center' }}>
+                            <Slider
+                                value={isMuted ? 0 : volume}
+                                onChange={handleVolumeChange}
+                                aria-label="volume"
+                                size="small"
+                                min={0}
+                                max={100}
+                                sx={{ color: '#fff', height: 3 }}
+                            />
+                        </Box>
                     </Box>
                     <Box
                         sx={{
