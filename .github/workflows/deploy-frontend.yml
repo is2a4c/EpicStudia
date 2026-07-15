@@ -35,7 +35,7 @@ jobs:
           VITE_API_URL: ${{ secrets.VITE_API_URL }}
 
       - name: Deploy dist to server
-        uses: easingthemes/ssh-deploy@v5.1.0
+        uses: easingthemes/ssh-deploy@v6.0.3
         with:
           SSH_PRIVATE_KEY: ${{ secrets.DEPLOY_SSH_KEY }}
           REMOTE_HOST: ${{ secrets.DEPLOY_HOST }}
